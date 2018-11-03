@@ -42,7 +42,7 @@ BLUE = (0, 0, 255)
 #fonts 
 score_font = None
 
-geneSet = ()
+geneSet =[]
 
 # BALL CLASS
 class Ball(pg.sprite.Sprite):
@@ -231,9 +231,12 @@ def selection(pop):
     
 def mutation(C1,prob):
     x = uniform(0,1)
+    
     if x <= prob:
         point = randint(0,len(C1)-1)
-        C1[point] = uniform(0,1)
+        point2 = randint(0,len(C1)-1)
+        C1[point] = round(uniform(0,1),3)
+        C1[point2] = round(uniform(0,1),3)
     return C1
 def crossover(C1,C2,x):
     point = randint(1,len(C1)-1)
@@ -251,10 +254,11 @@ def crossover(C1,C2,x):
 def generatePopulation(x):
     pop = [] 
     while len(pop)<x:
-        p = uniform(0,1)
-        gene =[p,uniform(0,1),uniform(0,1),uniform(0,1),uniform(0,1),uniform(0,1)]
-        if gene not in pop:
+        p = round(uniform(0,1),3)
+        gene =[p,round(uniform(0,1),3),round(uniform(0,1),3),round(uniform(0,1),3),round(uniform(0,1),3),round(uniform(0,1),3)]
+        if gene not in pop and gene not in geneSet:
             pop.append(gene)
+            geneSet.append(gene)
     return pop
 def fitness(gene,relayTime,rallyTime,c):
     f = rallyTime - (relayTime/c)
@@ -290,6 +294,7 @@ def geneticAlgorithm(mainWindow,surface_rect,clock):
     ccurf = getMinimumFitness(popF)
     for ran in range(100):
     #while minF >= ccurf and minF>2:
+        print(ccurf)
         generation+=1
         minF = ccurf
         popF = selection(popF)
@@ -298,10 +303,12 @@ def geneticAlgorithm(mainWindow,surface_rect,clock):
             x,y = crossover(popF[i][0],popF[i+1][0],0)
             x = mutation(x,0.5)
             y = mutation(x,0.5)
-            if x not in newpop:
+            if x not in geneSet:
                 newpop.append(x)
-            if y not in newpop:
+                geneSet.append(x)
+            if y not in geneSet:
                 newpop.append(y)
+                geneSet.append(y)
         if len(newpop) < length:
             newpop = newpop + generatePopulation(length-len(newpop))
         for p in newpop:
@@ -309,7 +316,7 @@ def geneticAlgorithm(mainWindow,surface_rect,clock):
         popF = sorted(popF,key=getKey)
         popF = popF[:len(pop)]
         ccurf = getMinimumFitness(popF)
-        print(ccurf)
+        
        
         
         
