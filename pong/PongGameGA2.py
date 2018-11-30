@@ -53,7 +53,13 @@ BLUE = (0, 0, 255)
 score_font = None
 
 def getRandomGene():
-    gene =[round(uniform(0,1),2),round(uniform(0,1),2),round(uniform(0,1),2),round(uniform(0,1),2),round(uniform(0,1),2),round(uniform(0,1),2)]
+    num = randint(0,5)
+    gene=[0.0,0.0,0.0,0.0,0.0,0.0]
+    for i in range(num):
+        j = randint(0,5)
+        gene[j]=round(uniform(0,1),2)
+        
+    #gene =[round(uniform(0,1),2),round(uniform(0,1),2),round(uniform(0,1),2),round(uniform(0,1),2),round(uniform(0,1),2),round(uniform(0,1),2)]
     return gene
     
 # BALL CLASS
@@ -182,14 +188,14 @@ def paddle_ballHit(paddle1,paddle2,ball):
             ball.direction = FWD_LEFT
         elif ball.direction ==BWD_RIGHT:
             ball.direction = BWD_LEFT
-        ball.speed *= 1.1
+        ball.speed *= 1.01
         paddle2.hit+=1
     if pg.sprite.collide_rect(ball,paddle1):
         if ball.direction == FWD_LEFT:
             ball.direction = FWD_RIGHT
         elif ball.direction ==BWD_LEFT:
             ball.direction = BWD_RIGHT
-        ball.speed *= 1.1
+        ball.speed *= 1.01
         paddle1.hit+=1
 
     
@@ -214,12 +220,12 @@ def GA(mainWindow,surface_rect,clock):
         if f==False:
             i=0
             j=num
-            doCrossoverMutations(paddle1population)
+            paddle1population = doCrossoverMutations(paddle1population)
             
         if f==True:
             j=0
             i=num
-            doCrossoverMutations(paddle2population)
+            paddle2population=doCrossoverMutations(paddle2population)
         GAME_GENERATION+=1
     print("done")
 def doTask(mainWindow,surface_rect,clock,pad1List,pad2List,i,j):
@@ -264,6 +270,8 @@ def doCrossoverMutations(padlist):
             padlist1[i+1].gene= f1+b2
         padlist1[i].gene = mutate(padlist1[i].gene,0.6)
         padlist1[i+1].gene= mutate(padlist1[i+1].gene,0.6)
+        padlist1[i].rect.centery =padlist1[i].centery
+        padlist1[i+1].rect.centery =padlist1[i+1].centery
     padlist = padlist1 + padlist2
     return padlist
 
@@ -367,7 +375,7 @@ def playGame(mainWindow,surface_rect,clock,p1,p2,i,j):
     
     count =0
     while True:
-        clock.tick(60)
+        clock.tick(300)
         
         if ball.rect.x >WINDOW_WIDTH:
             ball.rect.centerx = surface_rect.centerx
@@ -491,9 +499,9 @@ def playGame(mainWindow,surface_rect,clock,p1,p2,i,j):
         ball.changeDirection(surface_rect.bottom)
         paddle_ballHit(paddle1,paddle2,ball)
         pg.display.update()
-        if  p1_Score == 1:
+        if  p1_Score == 3:
             return False,relayTime,rallyTime
-        if p2_Score == 1:
+        if p2_Score == 3:
             return True,relayTime,rallyTime
         
 # Getting the clock for the Game
