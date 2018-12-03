@@ -1,6 +1,7 @@
 import pygame as pg
 import sys
 import time
+import numpy as np
 from pygame.locals import *
 from random import randint
 import random
@@ -49,6 +50,7 @@ class Bullet(pg.sprite.Sprite):
         
 class Rocket(pg.sprite.Sprite):
     def __init__(self,bottom,centerx,centery):
+        
         pg.sprite.Sprite.__init__(self)
         self.centerx = centerx
         self.centery = centery
@@ -67,6 +69,7 @@ class Rocket(pg.sprite.Sprite):
             self.rect.x += self.speed
         else :
             pass
+        
     def shoot(self):
         pass
             
@@ -107,6 +110,8 @@ class Enemy(pg.sprite.Sprite):
         
         elif self.direction == LEFT:
             self.rect.x -= self.speed
+            
+            
     def changeDirection(self,counter):
         if counter%10 ==0:
             r = randint(0,1000)
@@ -116,21 +121,27 @@ class Enemy(pg.sprite.Sprite):
         else:
             if self.rect.y<0:
                 self.direction = random.choice([3,4,5,6])
+            elif self.rect.x>WINDOW_WIDTH-20:
+                self.direction = random.choice([1,4,5])
             elif self.rect.y>WINDOW_HEIGHT-100:
                 self.direction = random.choice([1,2,5,6])
             elif self.rect.x<10:
                 self.direction = random.choice([2,3,6])
-            elif self.rect.x>WINDOW_WIDTH-10:
-                self.direction = random.choice([1,4,5])
             else: 
                 pass
+            
 def playGame(gameWindow,surface_rect,clock):
     rocket = Rocket(gameWindow.get_rect().bottom,gameWindow.get_rect().centerx,gameWindow.get_rect().centery)
-    e1 = Enemy(gameWindow.get_rect().centerx,gameWindow.get_rect().centery,0.010)
-    e2 = Enemy(gameWindow.get_rect().centerx,gameWindow.get_rect().centery,0.200)
-    e3 = Enemy(gameWindow.get_rect().centerx,gameWindow.get_rect().centery,0.005)
-    sprites = pg.sprite.RenderPlain(rocket,e1,e2,e3)
-    counter =0
+    
+    probability =np.linspace(0,1,20)
+    EnemyArray =[]
+    for i in probability:
+        EnemyArray.append(Enemy(gameWindow.get_rect().centerx,gameWindow.get_rect().centery,i))
+    #e1 = Enemy(gameWindow.get_rect().centerx,gameWindow.get_rect().centery,0.010)
+    #e2 = Enemy(gameWindow.get_rect().centerx,gameWindow.get_rect().centery,0.200)
+    #e3 = Enemy(gameWindow.get_rect().centerx,gameWindow.get_rect().centery,0.005)
+    sprites = pg.sprite.RenderPlain(rocket,tuple(EnemyArray))#e1,e2,e3)
+    counter = 0
     while True:
         clock.tick(60)
         for event in pg.event.get():
@@ -161,12 +172,17 @@ def playGame(gameWindow,surface_rect,clock):
                     
         gameWindow.fill(BLACK)
         sprites.draw(gameWindow)
-        e1.move()
-        e1.changeDirection(counter)
-        e2.move()
-        e2.changeDirection(counter)
-        e3.move()
-        e3.changeDirection(counter)
+        for enemy in EnemyArray:
+            enemy.move()
+            enemy.changeDirection(counter)
+# =============================================================================
+#         e1.move()
+#         e1.changeDirection(counter)
+#         e2.move()
+#         e2.changeDirection(counter)
+#         e3.move()
+#         e3.changeDirection(counter)
+# =============================================================================
         rocket.move()
         pg.display.update()
         counter +=1
@@ -176,6 +192,7 @@ def playGame(gameWindow,surface_rect,clock):
                 
 def getClock():
     return pg.time.Clock()
+
 def createGameWindow(width,height):
     flag = 0
     depth =32
@@ -184,6 +201,7 @@ def createGameWindow(width,height):
 def main():
     gameWindow = createGameWindow(WINDOW_WIDTH,WINDOW_HEIGHT)
     surface_rect = gameWindow.get_rect()
+    pg.display.set_caption('SPACE ASSAULTER GAME')
     clock = getClock()
     playGame(gameWindow,surface_rect,clock)
     
