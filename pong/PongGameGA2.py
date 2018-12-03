@@ -292,7 +292,7 @@ def MA(mainWindow,surface_rect,clock,pop1,pop2):
     i=0
     j=0
     maxRelayTime = 0.0
-    while maxRelayTime < 1000.0 and GAME_GENERATION2<40:
+    while maxRelayTime < 1000.0 and GAME_GENERATION2<60:
         
         f,relayTime,rallyTime,num= doTask(mainWindow,surface_rect,clock,paddle1population,paddle2population,i,j,GAME_GENERATION2)
         if relayTime> maxRelayTime:
@@ -330,7 +330,7 @@ def GA(mainWindow,surface_rect,clock,pop1,pop2):
     i=0
     j=0
     maxRelayTime = 0.0
-    while maxRelayTime < 1000.0 and GAME_GENERATION1<20:
+    while maxRelayTime < 1000.0 and GAME_GENERATION1<60:
         
         f,relayTime,rallyTime,num= doTask(mainWindow,surface_rect,clock,paddle1population,paddle2population,i,j,GAME_GENERATION1)
         if relayTime> maxRelayTime:
@@ -667,7 +667,7 @@ def main():
         p2 = Paddle(1,mainWindow.get_rect().left,mainWindow.get_rect().right,mainWindow.get_rect().centery)
         pop2.append(p2)
     GA(mainWindow,surface_rect,clock,pop1,pop2)
-    MA(mainWindow,surface_rect,clock)
+    MA(mainWindow,surface_rect,clock,pop1,pop2)
     plotGraph(xGAGeneration,yGAavgFitness,xMAGeneration,yMAavgFitness,"GA vs MA","Generations","Avg reward")
 if __name__ =='__main__':
     pg.init()
