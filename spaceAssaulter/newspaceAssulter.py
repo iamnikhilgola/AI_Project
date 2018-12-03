@@ -224,7 +224,7 @@ def health_bars(rocket_health,gameWindow):
     elif rocket_health < 50 and rocket_health>0:
         rocket_health_color = RED
     else:
-        sys.exit()
+        return 0
 
     pg.draw.rect(gameWindow , rocket_health_color,(800,10,rocket_health , 25))
 
@@ -233,18 +233,66 @@ def createPopulation():
     for i in range(10):
         population[i]=chromosome()
     return population
+
+def crossover(chromosome1,chromosome2):
+    point = random.randint(1,10)
+    child1 = chromosome1[:point]+chromosome2[point:]
+    child2 = chromosome2[:point]+chromosome1[point:] 
+    return child1,child2
+
+def mutation(chromosome):
+    point= random.randint(0,5)
+    chromosome[point]=random.random()
+    return chromosome
     
+def parentSelection(fitnessValues,initialpopulation):
+    bestparents=[0,0,0,0,0]
+    for i in range(5):
+        max1=max(fitnessValues)
+        index=fitnessValues.index(max1)
+        print(index,initialpopulation[index])
+        parent1 = initialpopulation[index]
+        initialpopulation.remove(parent1)
+        fitnessValues.remove(max1)
+        bestparents[i]=parent1
+    return bestparents
+
+def calcfitness(score,time):
+    return  (0.7*score + 0.3*time)/2
+
 def geneticAlgo_rocket(gameWindow,surface_rect,clock):
     rocket = Rocket(gameWindow.get_rect().bottom,gameWindow.get_rect().centerx,gameWindow.get_rect().centery)
     initialpopulation=createPopulation()
-    fitnessValues = [0 for i in range(10)]
-    i=0
-    for chromosome in initialpopulation:
-        fitnessValues[i]=playGame(gameWindow,surface_rect,clock,chromosome,rocket)
-        i+=1
+    newspecies =0
+    newpopulation=initialpopulation
+    while(True):
+        initialpopulation=newpopulation
+        print(len(initialpopulation))
+        fitnessValues = [0 for i in range(10)]
+        i=0
+        for chromosome in initialpopulation:
+            score,time=playGame(gameWindow,surface_rect,clock,chromosome,rocket,i,newspecies)
+            fitnessValues[i]=calcfitness(score,time)
+            i+=1
+        bestparents=parentSelection(fitnessValues,initialpopulation)
+        newpopulation=[]
+        flag=0
+        for i in range(len(bestparents)):
+            for j in range(len(bestparents)):
+                if i<j and flag==0:
+                    child1,child2=crossover(bestparents[i],bestparents[j])
+                    newpopulation.append(child1)
+                    newpopulation.append(child2)
+                    if(len(newpopulation)>=10):
+                        flag=1
         
-def playGame(gameWindow,surface_rect,clock,chromosome,rocket):
+        for i in range(2):
+            newpopulation[i]=mutation(newpopulation[i])
+        newspecies+=1
+        
+def playGame(gameWindow,surface_rect,clock,chromosome,rocket,chrome,species):
     #rocket = Rocket(gameWindow.get_rect().bottom,gameWindow.get_rect().centerx,gameWindow.get_rect().centery)
+    time1 =time.time()
     rocket_health = 100
     probability =np.linspace(0,1,4)
     EnemyArray =[]
@@ -256,12 +304,13 @@ def playGame(gameWindow,surface_rect,clock,chromosome,rocket):
     Score= 0
     score_font = pg.font.SysFont("Helvetica",20)
     Timett = pg.font.SysFont("Helvetica",20)
+    enemy_font = pg.font.SysFont("Helvetica",20)
     
     while True:
         sprites = pg.sprite.RenderPlain(rocket,tuple(EnemyArray),tuple(bullets))
-        clock.tick(60)
+        clock.tick(200)
         newChro=chromosome#()
-        print(newChro)
+        #print(newChro)
         hitting=random.random()
         bullet=rocket.automove(newChro,hitting)
         
@@ -301,7 +350,13 @@ def playGame(gameWindow,surface_rect,clock,chromosome,rocket):
             fire.update()
             
         gameWindow.fill(BLACK)
-        health_bars(rocket_health,gameWindow)
+        updatedhealth = health_bars(rocket_health,gameWindow)
+        
+        if updatedhealth==0:
+            time2 = time.time()
+            ttime = time2 -time1
+            return Score,ttime
+        
         sprites.draw(gameWindow)
         
         for enemy in EnemyArray:
@@ -311,7 +366,7 @@ def playGame(gameWindow,surface_rect,clock,chromosome,rocket):
         if(counter%5==0):
             for enemy in EnemyArray:
                 for secenemy in EnemyArray:
-                    if (enemy != secenemy and len(EnemyArray)<=100):
+                    if (enemy != secenemy and len(EnemyArray)<=50):
                         maxtime1,maxtime2= getMaxTime(EnemyArray)
                         newEnemy=EnemyBreeding(enemy,secenemy,maxtime1,maxtime2,gameWindow)
             EnemyArray+=newEnemy
@@ -338,21 +393,44 @@ def playGame(gameWindow,surface_rect,clock,chromosome,rocket):
         maxTimeboard_rect = maxTimeboard.get_rect()
         maxTimeboard_rect.x = 10
         maxTimeboard_rect.y = 10
+        
+        speciesBoard = enemy_font.render("Species:" + str(species),True,WHITE,BLACK)
+        speciesBoard_rect = speciesBoard.get_rect()
+        speciesBoard_rect.centerx = 85
+        speciesBoard_rect.y = 40
+        
+        chromeBoard = enemy_font.render("population:" + str(chrome),True,WHITE,BLACK)
+        chromeBoard_rect = chromeBoard.get_rect()
+        chromeBoard_rect.centerx = 85
+        chromeBoard_rect.y = 60
+        
+        enemyBoard = enemy_font.render("Enemy Count:" + str(len(EnemyArray)),True,WHITE,BLACK)
+        enemyBoard_rect = enemyBoard.get_rect()
+        enemyBoard_rect.centerx = 85
+        enemyBoard_rect.y = 80
+        
         gameWindow.blit(scoreBoard,scoreBoard_rect)
         gameWindow.blit(maxTimeboard,maxTimeboard_rect)
+        gameWindow.blit(enemyBoard,enemyBoard_rect)
+        gameWindow.blit(chromeBoard,chromeBoard_rect)
+        gameWindow.blit(speciesBoard,speciesBoard_rect)
         
         #rocket.move()
         pg.display.update()
         counter +=1
         if counter ==1000000:
             counter =0
-        if(len(EnemyArray)>100):
-            return Score
+        if(len(EnemyArray)>50):
+            time2=time.time()
+            ttime=time2-time1
+            return Score,ttime
             #sys.exit()
         
         if(len(EnemyArray)==0):
-            time.sleep(0.2)
-            return Score
+            time2=time.time()
+            ttime= time2-time1
+            #time.sleep(0.2)
+            return Score,ttime
             #sys.exit()
             GameOver = score_font.render("GAME OVER ",True,WHITE,BLACK)
             GameOver_rect = GameOver.get_rect()
