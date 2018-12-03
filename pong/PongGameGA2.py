@@ -8,10 +8,13 @@ Created on Mon Nov 12 21:12:09 2018
 import pygame as pg
 import sys
 import time
+import numpy as np
 from pygame.locals import *
 from random import randint
 from random import uniform
 from random import shuffle
+import matplotlib.pyplot as plt 
+
 
 #Global Variables********
 #Game window size parameter
@@ -29,7 +32,8 @@ MOVE_DOWN1 = False
 NO_MOVE1 = True
 
 #Game Generation
-GAME_GENERATION = 0
+GAME_GENERATION1 = 0
+GAME_GENERATION2 = 0
 
 #Paddle2    
 MOVE_UP2 = False
@@ -49,8 +53,31 @@ RED = (255, 0 ,0)
 GREEN = (0,255,0)
 BLUE = (0, 0, 255)
 
+BESTCHROMOSOMEP1 = [0.99,0.1,0.9,0.0,0.0,0.1]
+
+BESTCHROMOSOMEP2 = [0.0,0.0,0.1,0.99,0.1,0.9]
 #fonts 
 score_font = None
+
+#Graph axism list
+xMAGeneration=[]
+yMAavgFitness=[]
+
+xGAGeneration=[]
+yGAavgFitness=[]
+
+def plotGraph(x1,y1,x2,y2,title,xaxis,yaxis):
+    plt.plot(x1, y1,'-b',label='GA')
+    #title = "Leaning Curve with HyperParameters"
+    plt.plot(x2,y2,'-r',label='MA')
+    plt.legend() 
+    plt.xlabel(xaxis)
+    plt.ylabel(yaxis) 
+    plt.title(title)
+    plt.show() 
+
+
+
 
 def getRandomGene():
     num = randint(0,5)
@@ -127,7 +154,7 @@ class Paddle(pg.sprite.Sprite):
         self.rect.centery = self.centery
     def calculateFitness(self):
         self.fitness = (((self.relayTime+0.1)/(self.rallyTime+0.1))*self.hit)+self.distance
-        print(self.fitness)
+        #print(self.fitness)
     def move(self):
         global MOVE_UP1
         global MOVE_UP2
@@ -198,23 +225,114 @@ def paddle_ballHit(paddle1,paddle2,ball):
         ball.speed *= 1.01
         paddle1.hit+=1
 
-    
-def GA(mainWindow,surface_rect,clock):
-    global GAME_GENERATION
+def Evaluate1(P1,bp2,mainWindow,surface_rect,clock):
+    p1 = P1
+    p2 = bp2
+    currentFitness = 0
+    for i in range(0,5):
+        
+        flag,relayTime,rallyTime = playGame(mainWindow,surface_rect,clock,p1,p2,i,0,True,GAME_GENERATION2)
+        if flag==False:
+            return p1
+        else:
+            p1.relayTime = relayTime
+            p1.rallyTime = rallyTime
+            p1.calculateFitness()
+            myfitness = p1.fitness
+            if myfitness<currentFitness:
+                return p1
+            else:
+                p1.gene = mutate(p1.gene,1)
+                currentFitness = myfitness
+    return p1
+
+def Evaluate2(bp1,P2,mainWindow,surface_rect,clock):
+    p2 = P2
+    p1 = bp1
+    currentFitness = 0
+    for i in range(0,5):
+        
+        flag,relayTime,rallyTime = playGame(mainWindow,surface_rect,clock,p1,p2,i,0,True,GAME_GENERATION2)
+        if flag==True:
+            return p2
+        else:
+            p2.relayTime = relayTime
+            p2.rallyTime = rallyTime
+            p2.calculateFitness()
+            myfitness = p2.fitness
+            if myfitness<currentFitness:
+                return p2
+            else:
+                p2.gene = mutate(p2.gene,1)
+                currentFitness = myfitness
+    return p2
+def getAvgFitness(pop1,pop2):
+    sum1=sum([x.fitness for x in pop1])
+    sum2 = sum([x.fitness for x in pop2])
+    avg = (sum1+sum2)/(len(pop1)+len(pop2))
+    return avg
+def MA(mainWindow,surface_rect,clock,pop1,pop2):
+    global GAME_GENERATION2
     SIZE = 10
-    paddle1population=[]
-    paddle2population=[]
-    for i in range(SIZE):
-        p1 = Paddle(0,mainWindow.get_rect().left,mainWindow.get_rect().right,mainWindow.get_rect().centery)
-        paddle1population.append(p1)
-        p2 = Paddle(1,mainWindow.get_rect().left,mainWindow.get_rect().right,mainWindow.get_rect().centery)
-        paddle2population.append(p2)
+    paddle1population=pop1
+    paddle2population=pop2
+    for i in range(len(pop1)):
+        p1 = paddle1population[i]
+        bp2 = Paddle(1,mainWindow.get_rect().left,mainWindow.get_rect().right,mainWindow.get_rect().centery)
+        bp2.gene = BESTCHROMOSOMEP2
+        p1 = Evaluate1(p1,bp2,mainWindow,surface_rect,clock)
+        paddle1population[i] = p1
+       
+        p2 = paddle2population[i]
+        bp1 = Paddle(0,mainWindow.get_rect().left,mainWindow.get_rect().right,mainWindow.get_rect().centery)
+        bp1.gene = BESTCHROMOSOMEP1
+       
+        p2 = Evaluate2(bp1,p2,mainWindow,surface_rect,clock)
+        paddle2population[i]= p2
     i=0
     j=0
     maxRelayTime = 0.0
-    while maxRelayTime < 1000.0:
+    while maxRelayTime < 1000.0 and GAME_GENERATION2<40:
         
-        f,relayTime,rallyTime,num= doTask(mainWindow,surface_rect,clock,paddle1population,paddle2population,i,j)
+        f,relayTime,rallyTime,num= doTask(mainWindow,surface_rect,clock,paddle1population,paddle2population,i,j,GAME_GENERATION2)
+        if relayTime> maxRelayTime:
+            maxRelayTime = relayTime
+        if f==False:
+            i=0
+            j=num
+            paddle1population = doCrossoverMutations(paddle1population)
+            for i in range(0,len(paddle1population)-6):
+                bp2 = Paddle(1,mainWindow.get_rect().left,mainWindow.get_rect().right,mainWindow.get_rect().centery)
+                bp2.gene = BESTCHROMOSOMEP2
+                paddle1population[i] = Evaluate1(paddle1population[i],bp2,mainWindow,surface_rect,clock)
+        
+        if f==True:
+            j=0
+            i=num
+            paddle2population=doCrossoverMutations(paddle2population)
+            for i in range(0,len(paddle1population)-6):
+                p2 = Paddle(1,mainWindow.get_rect().left,mainWindow.get_rect().right,mainWindow.get_rect().centery)
+                bp1 = Paddle(0,mainWindow.get_rect().left,mainWindow.get_rect().right,mainWindow.get_rect().centery)
+                bp1.gene = BESTCHROMOSOMEP1
+                p2 = Evaluate2(bp1,p2,mainWindow,surface_rect,clock)
+ 
+        xMAGeneration.append(GAME_GENERATION2)
+        GAME_GENERATION2+=1
+        avg = getAvgFitness(paddle1population,paddle2population)
+        yMAavgFitness.append(avg)
+        print("MA avg Fitness: ",avg)
+    print("done")
+
+def GA(mainWindow,surface_rect,clock,pop1,pop2):
+    global GAME_GENERATION1
+    paddle1population=pop1
+    paddle2population=pop2
+    i=0
+    j=0
+    maxRelayTime = 0.0
+    while maxRelayTime < 1000.0 and GAME_GENERATION1<20:
+        
+        f,relayTime,rallyTime,num= doTask(mainWindow,surface_rect,clock,paddle1population,paddle2population,i,j,GAME_GENERATION1)
         if relayTime> maxRelayTime:
             maxRelayTime = relayTime
         if f==False:
@@ -226,13 +344,17 @@ def GA(mainWindow,surface_rect,clock):
             j=0
             i=num
             paddle2population=doCrossoverMutations(paddle2population)
-        GAME_GENERATION+=1
+        xGAGeneration.append(GAME_GENERATION1)
+        GAME_GENERATION1+=1
+        avg = getAvgFitness(paddle1population,paddle2population)
+        yGAavgFitness.append(avg)
+        print("GA avg Fitness: ",avg)
     print("done")
-def doTask(mainWindow,surface_rect,clock,pad1List,pad2List,i,j):
+def doTask(mainWindow,surface_rect,clock,pad1List,pad2List,i,j,gg):
     while i<len(pad1List) and j<len(pad2List):
         p1=pad1List[i]
         p2=pad2List[j]
-        flag,relayTime,rallyTime = playGame(mainWindow,surface_rect,clock,p1,p2,i,j)
+        flag,relayTime,rallyTime = playGame(mainWindow,surface_rect,clock,p1,p2,i,j,False,gg)
         
         if flag == False:
             pad2List[j].relayTime = relayTime
@@ -278,7 +400,7 @@ def doCrossoverMutations(padlist):
 def mutate(gene,prob):
     
     num = uniform(0,1)
-    if num>prob:
+    if num<prob:
         pos = randint(0,len(gene)-1)
         gene[pos] = round(uniform(0,1),2)
     return gene        
@@ -351,7 +473,7 @@ def getKey(paddle):
     
     
 #Game Play
-def playGame(mainWindow,surface_rect,clock,p1,p2,i,j):
+def playGame(mainWindow,surface_rect,clock,p1,p2,i,j,evaluate,GAME_GENERATION):
     paddle1 = p1
     paddle2 = p2
     ball = Ball(surface_rect.centerx,surface_rect.centery)
@@ -368,6 +490,9 @@ def playGame(mainWindow,surface_rect,clock,p1,p2,i,j):
     
     pgen1 = pg.font.SysFont("Helvetica",10)
     pgen2 = pg.font.SysFont("Helvetica",10)
+    
+    evalFont = pg.font.SysFont("Helvetica",10)
+    
     
     startTime = time.time()
     rstartTime = time.time()
@@ -395,7 +520,7 @@ def playGame(mainWindow,surface_rect,clock,p1,p2,i,j):
             if event.type == QUIT:
                 pg.quit()
                 sys.exit()
-            
+             
             if event.type == KEYDOWN:
                 global MOVE_UP1
                 global MOVE_UP2
@@ -441,6 +566,12 @@ def playGame(mainWindow,surface_rect,clock,p1,p2,i,j):
         timeStr2 = timeStr2[:8]
         timeStr = timeStr[:8]
         
+        if evaluate ==True:
+            evalBoard=evalFont.render("Evaluating the Paddle",True,WHITE,BLACK)
+            evalBoard_rect=evalBoard.get_rect()
+            evalBoard_rect.x = surface_rect.centerx
+            evalBoard_rect.y = surface_rect.centery
+            
         relaytimeboard = timeFont.render("Relay Time : "+timeStr,True,WHITE,BLACK)
         relaytimeboard_rect = relaytimeboard.get_rect()
         relaytimeboard_rect.x = 15
@@ -489,6 +620,9 @@ def playGame(mainWindow,surface_rect,clock,p1,p2,i,j):
         mainWindow.blit(pgen2board,pgen2board_rect)
         mainWindow.blit(gameITRboard,gameITRboard_rect)
         
+        if evaluate==True:
+            mainWindow.blit(evalBoard,evalBoard_rect)
+        
         sprites.draw(mainWindow)
         paddle1.autoMove(ball.rect.x,ball.rect.y)
         paddle2.autoMove(ball.rect.x,ball.rect.y)
@@ -499,6 +633,12 @@ def playGame(mainWindow,surface_rect,clock,p1,p2,i,j):
         ball.changeDirection(surface_rect.bottom)
         paddle_ballHit(paddle1,paddle2,ball)
         pg.display.update()
+        if evaluate ==True:
+            if  p1_Score == 1:
+                return False,relayTime,rallyTime
+            if p2_Score == 1:
+                return True,relayTime,rallyTime
+        
         if  p1_Score == 3:
             return False,relayTime,rallyTime
         if p2_Score == 3:
@@ -516,8 +656,19 @@ def createGameWindow(width,height):
 def main():
     mainWindow = createGameWindow(WINDOW_WIDTH,WINDOW_HEIGHT)
     surface_rect = mainWindow.get_rect()
+    
     clock = getClock()
-    GA(mainWindow,surface_rect,clock)
+    pop1 =[]
+    pop2 =[]
+    SIZE=10
+    for i in range(SIZE):
+        p1 = Paddle(0,mainWindow.get_rect().left,mainWindow.get_rect().right,mainWindow.get_rect().centery)
+        pop1.append(p1)
+        p2 = Paddle(1,mainWindow.get_rect().left,mainWindow.get_rect().right,mainWindow.get_rect().centery)
+        pop2.append(p2)
+    GA(mainWindow,surface_rect,clock,pop1,pop2)
+    MA(mainWindow,surface_rect,clock)
+    plotGraph(xGAGeneration,yGAavgFitness,xMAGeneration,yMAavgFitness,"GA vs MA","Generations","Avg reward")
 if __name__ =='__main__':
     pg.init()
     main()
